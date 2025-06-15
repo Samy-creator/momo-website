@@ -1,0 +1,78 @@
+.momo-hero {
+  margin-top: 80px;
+  padding: 100px 30px;
+  background: url("/public/images/Truck.jpg") no-repeat center center/cover;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  color: rgb(255, 255, 255);
+  font-family: "Poppins", sans-serif;
+  text-align: left;
+  opacity: 100%;
+  margin-bottom: 20px;
+  border-bottom-left-radius: 15%;
+  border-top-right-radius: 15%;
+}
+
+.momo-hero-content h1 {
+  font-size: 2.8rem;
+  font-weight: bold;
+  margin-bottom: 10px;
+}
+
+.momo-hero-content p {
+  font-size: 1.2rem;
+  color: #ffffff;
+  margin-bottom: 30px;
+}
+
+.momo-hero-buttons {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.order-now-btn {
+  padding: 12px 24px;
+  font-size: 1rem;
+  background-color: #ff6f00;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.order-now-btn:hover {
+  background-color: #e65100;
+}
+
+.order-options {
+  display: flex;
+  gap: 20px;
+}
+
+.order-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: white;
+  padding: 10px 16px;
+  border-radius: 8px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  font-weight: bold;
+  color: #333;
+  text-decoration: none;
+  transition: transform 0.2s ease;
+}
+
+.order-btn:hover {
+  transform: scale(1.05);
+}
+
+.order-logo {
+  width: 24px;
+  height: 24px;
+}

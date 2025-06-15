@@ -1,0 +1,19 @@
+.log-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.clear-btn {
+  padding: 6px 12px;
+  background-color: #d9534f;
+  color: white;
+  border: none;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.clear-btn:hover {
+  background-color: #c9302c;
+}
