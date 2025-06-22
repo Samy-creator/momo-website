@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import "./MomoHomePage.css";
-import "./components/Hero.css";
+import axios from "axios"; // Ensure axios is installed: npm install axios
+import "./MomoHomePage.css"; // The main CSS for the homepage
 import { FaUtensils } from "react-icons/fa";
 import { MdDeliveryDining, MdPerson } from "react-icons/md";
 import { BiFoodMenu } from "react-icons/bi";
-import Footer from "./components/Footer";
-import swiggyLogo from "./assets/swiggy.jpg";
-import zomatoLogo from "./assets/zomato.png";
-import Testimonial from "./components/testimonial";
+import Footer from "./components/Footer"; // Ensure path is correct
+import swiggyLogo from "./assets/swiggy.jpg"; // Ensure path is correct
+import zomatoLogo from "./assets/zomato.png"; // Ensure path is correct
+import Testimonial from "./components/testimonial"; // Ensure path is correct
 
 export default function MomoHomePage({
   isLoggedIn,
@@ -16,13 +16,35 @@ export default function MomoHomePage({
   username,
   setUsername,
 }) {
-  const [category, setCategory] = useState("nonveg");
-  const [searchTerm, setSearchTerm] = useState("");
-  const [modalVisible, setModalVisible] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const dropdownRef = useRef(null);
-  const navigate = useNavigate();
+  // State to hold dynamic homepage content fetched from the backend
+  const [homepageContent, setHomepageContent] = useState({
+    hero: {
+      title: "Hot fresh legendary Momos on wheels!",
+      subtitle:
+        "From our food truck to your doorstep served only via Swiggy & Zomato",
+      imageUrl: "/images/Truck.jpg",
+    }, // Default values
+    about: {
+      description:
+        "Our passion is to bring you the most authentic and delicious momos. Made with fresh ingredients and traditional recipes, every bite is a journey to flavor paradise.",
+    },
+    products: [], // This will hold the dynamic menu items
+  });
+  const [loadingContent, setLoadingContent] = useState(true); // Loading state for API fetch
+  const [contentError, setContentError] = useState(null); // Error state for API fetch
 
+  // Local UI states
+  const [category, setCategory] = useState("all"); // 'all', 'veg', 'nonveg' for menu filtering
+  const [searchTerm, setSearchTerm] = useState("");
+  const [modalVisible, setModalVisible] = useState(false); // For order now modal
+  const [dropdownOpen, setDropdownOpen] = useState(false); // For user dropdown
+  const dropdownRef = useRef(null); // Ref for closing dropdown on outside click
+  const navigate = useNavigate(); // Hook for programmatic navigation
+
+  // Determine if the logged-in user has admin privileges
+  const isAdmin = localStorage.getItem("isAdmin") === "true";
+
+  // Effect to close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -35,98 +57,75 @@ export default function MomoHomePage({
     };
   }, []);
 
-  const vegGallery = [
-    {
-      name: "Fried momo",
-      image: "./images/Fried momo.jpg",
-      price: 120,
-      rating: 4.8,
-    },
-    {
-      name: "Thanduri malai",
-      image: "./images/Thandhoori malai.jpg",
-      price: 140,
-      rating: 4.9,
-    },
-    {
-      name: "Schezwan momo",
-      image: "./images/schezwan momo.jpg",
-      price: 130,
-      rating: 5.0,
-    },
-    {
-      name: "Zinger momo",
-      image: "./images/Zinger momo.png",
-      price: 135,
-      rating: 4.7,
-    },
-  ];
+  // Effect to fetch dynamic homepage content from the backend on component mount
+  useEffect(() => {
+    const fetchHomepageData = async () => {
+      setLoadingContent(true); // Start loading
+      setContentError(null); // Clear any previous errors
+      try {
+        // Make a GET request to the backend API for homepage content.
+        // This endpoint is public, so no authentication token is sent here.
+        const res = await axios.get("http://localhost:5000/api/homepage");
 
-  const nonVegGallery = [
-    {
-      name: "Lava momo",
-      image: "./images/Lava momo.jpg",
-      price: 150,
-      rating: 4.6,
-    },
-    {
-      name: "Japan momo",
-      image: "./images/Japan momo.jpg",
-      price: 145,
-      rating: 4.5,
-    },
-    {
-      name: "Streamed momo",
-      image: "./images/Streamed momo.jpg",
-      price: 150,
-      rating: 4.9,
-    },
-    {
-      name: "Fried momo",
-      image: "./images/Fried momo.jpg",
-      price: 120,
-      rating: 4.8,
-    },
-    {
-      name: "Schezwan momo",
-      image: "./images/schezwan momo.jpg",
-      price: 130,
-      rating: 5.0,
-    },
-    {
-      name: "Zinger momo",
-      image: "./images/Zinger momo.png",
-      price: 135,
-      rating: 4.7,
-    },
-    {
-      name: "Thanduri malai",
-      image: "./images/Thandhoori malai.jpg",
-      price: 140,
-      rating: 4.9,
-    },
-  ];
+        const fetchedData = {};
+        // Organize fetched data by sectionName for easy access
+        res.data.forEach((section) => {
+          fetchedData[section.sectionName] = section;
+        });
 
-  const gallery = category === "veg" ? vegGallery : nonVegGallery;
-  const filteredGallery = gallery.filter((item) =>
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+        // Update homepageContent state with fetched data, merging with defaults
+        setHomepageContent((prev) => ({
+          ...prev,
+          hero: { ...prev.hero, ...fetchedData.hero }, // Merge hero content, keeping default image if DB has none
+          about: fetchedData.about || prev.about, // Use fetched about data or previous default
+          products: fetchedData.products?.items || [], // Extract 'items' array for products, default to empty array
+        }));
+      } catch (err) {
+        console.error("Error fetching public homepage data:", err);
+        setContentError(
+          "Failed to load homepage content. Please try again later."
+        );
+      } finally {
+        setLoadingContent(false); // End loading
+      }
+    };
+    fetchHomepageData();
+  }, []); // Empty dependency array ensures this runs only once on mount
 
+  // Filter products based on selected category and search term
+  const filteredProducts = homepageContent.products.filter((item) => {
+    // Basic category filtering: you might want a 'type' field in your product schema for robust filtering
+    const matchesCategory =
+      category === "all" ||
+      (category === "veg" &&
+        item.name &&
+        item.name.toLowerCase().includes("veg")) ||
+      (category === "nonveg" &&
+        item.name &&
+        !item.name.toLowerCase().includes("veg"));
+
+    // Filter by search term (case-insensitive)
+    const matchesSearch =
+      item.name && item.name.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  // Handles user logout
   const handleLogout = () => {
     localStorage.removeItem("isLoggedIn");
     localStorage.removeItem("username");
-    localStorage.removeItem("hasWelcomed");
+    localStorage.removeItem("isAdmin"); // Clear admin status on logout
     setIsLoggedIn(false);
     setUsername("");
-    navigate("/");
+    setDropdownOpen(false); // Close dropdown
+    navigate("/"); // Redirect to home after logout
   };
 
-  useEffect(() => {
-    if (isLoggedIn && !localStorage.getItem("hasWelcomed")) {
-      alert(`Welcome, ${username}!`);
-      localStorage.setItem("hasWelcomed", "true");
-    }
-  }, [isLoggedIn, username]);
+  // Handles navigation to the admin page for admin users
+  const navigateToAdminPage = () => {
+    setDropdownOpen(false); // Close dropdown before navigating
+    navigate("/adminpage"); // Navigate to the admin page route
+  };
 
   return (
     <div className="momo-main">
@@ -178,19 +177,44 @@ export default function MomoHomePage({
                     right: "0px",
                     zIndex: 1000,
                     marginTop: "8px",
-                    minWidth: "100px",
+                    minWidth: "150px",
                     backgroundColor: "#fff",
-                    borderRadius: "40px",
+                    borderRadius: "8px",
                     boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
                     overflow: "hidden",
+                    display: "flex",
+                    flexDirection: "column",
                   }}>
+                  {isAdmin && ( // Conditionally render Admin Panel link ONLY if user is admin
+                    <button
+                      onClick={navigateToAdminPage}
+                      style={{
+                        padding: "10px 16px",
+                        width: "100%",
+                        border: "none",
+                        backgroundColor: "#5cb85c", // Green color for admin button
+                        color: "white",
+                        fontWeight: "bold",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        transition: "background-color 0.3s",
+                      }}
+                      onMouseEnter={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#4cae4c")
+                      }
+                      onMouseLeave={(e) =>
+                        (e.currentTarget.style.backgroundColor = "#5cb85c")
+                      }>
+                      ⚙️ Admin Panel
+                    </button>
+                  )}
                   <button
                     onClick={handleLogout}
                     style={{
                       padding: "10px 16px",
                       width: "100%",
                       border: "none",
-                      backgroundColor: "#e74c3c",
+                      backgroundColor: "#e74c3c", // Red color for logout button
                       color: "white",
                       fontWeight: "bold",
                       cursor: "pointer",
@@ -215,256 +239,214 @@ export default function MomoHomePage({
           )}
         </nav>
       </header>
-
-      <section className="momo-hero">
-        <div className="momo-hero-content">
-          <h1>
-            Hot fresh legendary
-            <br />
-            Momos on wheels!
-          </h1>
-          <p id="desc">
-            From our food truck to your doorstep served only via Swiggy & Zomato
-          </p>
-          <div className="momo-hero-buttons">
-            <button
-              className="order-now-btn"
-              onClick={() => setModalVisible(true)}>
-              Order Now
-            </button>
-          </div>
-        </div>
-      </section>
-
-      {modalVisible && (
-        <div className="order-modal-overlay">
-          <div className="order-modal">
-            <span
-              className="close-modal"
-              onClick={() => setModalVisible(false)}>
-              ×
-            </span>
-            <h2>Choose Delivery Partner</h2>
-            <div className="modal-buttons">
-              <a
-                href="https://www.swiggy.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="order-btn">
-                <img src={swiggyLogo} alt="Swiggy" className="order-logo" />
-                Swiggy
-              </a>
-              <a
-                href="https://www.zomato.com"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="order-btn">
-                <img src={zomatoLogo} alt="Zomato" className="order-logo" />
-                Zomato
-              </a>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <section className="momo-menu" id="menu">
+      {/* Conditional rendering based on loading and error states */}
+      {loadingContent ? (
         <div
-          className="menu-header"
           style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            flexWrap: "wrap",
-            marginTop: "70px",
+            textAlign: "center",
+            padding: "100px",
+            fontSize: "1.5em",
+            color: "#555",
           }}>
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "1rem",
-              marginLeft: "10%",
-            }}>
-            <span style={{ fontSize: "23px", fontWeight: "600" }}>
-              Category
-            </span>
-            <div
-              style={{
-                backgroundColor: "#eee",
-                borderRadius: "999px",
-                display: "flex",
-                overflow: "hidden",
-              }}>
-              <button
-                style={{
-                  padding: "12px 50px",
-                  border: "none",
-                  backgroundColor:
-                    category === "nonveg" ? "#db4c4c" : "transparent",
-                  color: category === "nonveg" ? "white" : "#333",
-                  borderRadius: "999px",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                }}
-                onClick={() => setCategory("nonveg")}>
-                Non veg
-              </button>
-              <button
-                style={{
-                  padding: "12px 50px",
-                  border: "none",
-                  backgroundColor:
-                    category === "veg" ? "#db4c4c" : "transparent",
-                  color: category === "veg" ? "white" : "#333",
-                  borderRadius: "999px",
-                  fontWeight: "bold",
-                  cursor: "pointer",
-                }}
-                onClick={() => setCategory("veg")}>
-                Veg
-              </button>
-            </div>
-          </div>
-
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              backgroundColor: "white",
-              padding: "0.5rem 1rem",
-              borderRadius: "999px",
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.08)",
-              gap: "0.5rem",
-              flexGrow: 1,
-              maxWidth: "400px",
-              marginTop: "-3px",
-              marginRight: "100px",
-            }}>
-            <span style={{ fontSize: "1.2rem" }}>🔍</span>
-            <input
-              type="text"
-              placeholder="Search"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              style={{
-                border: "none",
-                outline: "none",
-                flex: 1,
-                fontSize: "1rem",
-                background: "transparent",
-                padding: "10px",
-              }}
-            />
-            <div
-              style={{
-                position: "relative",
-                fontSize: "1.3rem",
-                cursor: "pointer",
-              }}>
-              🛍️
-              <span
-                style={{
-                  position: "absolute",
-                  top: "-0.4rem",
-                  right: "-0.4rem",
-                  backgroundColor: "#ff6a00",
-                  color: "white",
-                  fontSize: "0.7rem",
-                  fontWeight: "bold",
-                  borderRadius: "50%",
-                  padding: "0.1rem 0.4rem",
-                }}>
-                2
-              </span>
-            </div>
-          </div>
+          Loading amazing momos...
         </div>
-      </section>
-
-      <section className="momo-gallery">
-        <p className="product">Product</p>
-        <h3>Menu</h3>
-        <div className="menu-results">
-          <div className="menu-shown">
-            {filteredGallery.length > 0 ? (
-              filteredGallery.map((item, idx) => (
-                <div className="menu-card" key={idx}>
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="menu-image"
-                  />
-                  <div className="menu-info">
-                    <h4 className="menu-name">{item.name}</h4>
-                    <div className="menu-meta">
-                      <span className="menu-rating">⭐ {item.rating}</span>
-                      <span className="menu-price">Rs.{item.price}</span>
-                    </div>
-                    <button className="add-to-cart-btn">Add To Cart</button>
-                  </div>
+      ) : contentError ? (
+        <div
+          style={{
+            textAlign: "center",
+            padding: "100px",
+            fontSize: "1.5em",
+            color: "red",
+          }}>
+          {contentError}
+        </div>
+      ) : (
+        <>
+          {/* Hero Section: Background image set dynamically via inline style */}
+          <section
+            className="momo-hero"
+            style={{
+              backgroundImage: `url(${homepageContent.hero.imageUrl})`, // Use dynamic image URL
+            }}>
+            <div className="momo-hero-content">
+              <h1>{homepageContent.hero.title}</h1>
+              <p id="desc">{homepageContent.hero.subtitle}</p>
+              <div className="momo-hero-buttons">
+                <button
+                  className="order-now-btn"
+                  onClick={() => setModalVisible(true)}>
+                  Order Now
+                </button>
+              </div>
+            </div>
+          </section>
+          {/* Order Modal (unchanged from your original code) */}
+          {modalVisible && (
+            <div className="order-modal-overlay">
+              <div className="order-modal">
+                <span
+                  className="close-modal"
+                  onClick={() => setModalVisible(false)}>
+                  ×
+                </span>
+                <h2>Choose Delivery Partner</h2>
+                <div className="modal-buttons">
+                  <a
+                    href="https://www.swiggy.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="order-btn">
+                    <img src={swiggyLogo} alt="Swiggy" className="order-logo" />
+                    Swiggy
+                  </a>
+                  <a
+                    href="https://www.zomato.com"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="order-btn">
+                    <img src={zomatoLogo} alt="Zomato" className="order-logo" />
+                    Zomato
+                  </a>
                 </div>
-              ))
-            ) : (
-              <div className="no-results">🔍 No results found.</div>
-            )}
-          </div>
-        </div>
-      </section>
+              </div>
+            </div>
+          )}
+          {/* Momo Menu Section */}
+          <section className="momo-menu" id="menu">
+            <div className="menu-header">
+              <div className="menu-header-category">
+                <span>Category</span>
+                <div className="category-buttons-container">
+                  <button
+                    className={category === "nonveg" ? "active" : ""}
+                    onClick={() => setCategory("nonveg")}>
+                    Non veg
+                  </button>
+                  <button
+                    className={category === "veg" ? "active" : ""}
+                    onClick={() => setCategory("veg")}>
+                    Veg
+                  </button>
+                  <button
+                    className={category === "all" ? "active" : ""}
+                    onClick={() => setCategory("all")}>
+                    All
+                  </button>
+                </div>
+              </div>
 
-      <section className="why-choose-us" id="about">
-        <div className="why-header">
-          <p className="why-subtitle">Why choose us</p>
-          <h2 className="why-title">Our Flavorful Promise</h2>
-        </div>
-        <div className="why-features">
-          <div className="why-card highlighted">
-            <FaUtensils className="why-icon" />
-            <h3>Wide selection of restaurants</h3>
-            <p>
-              Craving variety? Discover diverse flavors from every corner of
-              your city.
-            </p>
-          </div>
-          <div className="why-card highlighted">
-            <BiFoodMenu className="why-icon" />
-            <h3>Easy ordering process</h3>
-            <p>
-              Skip the hassle. Order your favorite momos in seconds via Swiggy
-              or Zomato.
-            </p>
-          </div>
-          <div className="why-card highlighted">
-            <MdDeliveryDining className="why-icon" />
-            <h3>Fast delivery within 20 min</h3>
-            <p>
-              Hot momos at your doorstep in just 20 minutes—no waiting, just
-              eating!
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <Testimonial />
-
-      <section className="momo-newsletter" id="contact">
-        <div className="newsletter-container">
-          <div className="newsletter-image">
-            <img src="./images/Japan momo.jpg" alt="Plate of momos" />
-          </div>
-          <div className="newsletter-content">
-            <h2>Subscribe To Our Newsletter</h2>
-            <p>
-              Be the first to know about new momos, special offers & where we’re
-              rolling next.
-            </p>
-            <form className="newsletter-form">
-              <input type="email" placeholder="Type your email….." required />
-              <button type="submit">SUBSCRIBE</button>
-            </form>
-          </div>
-        </div>
-      </section>
-
-      <Footer />
+              <div className="search-and-cart-container">
+                <span>🔍</span>
+                <input
+                  type="text"
+                  placeholder="Search"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <div className="cart-icon-wrapper">
+                  🛍️
+                  <span className="cart-item-count"></span>
+                </div>
+              </div>
+            </div>
+          </section>
+          <section className="momo-gallery">
+            <p className="product">Product</p>
+            <h3>Menu</h3>
+            <div className="menu-results">
+              <div className="menu-shown">
+                {filteredProducts.length > 0 ? (
+                  filteredProducts.map((item) => (
+                    <div className="menu-card" key={item.id || item.name}>
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className="menu-image"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src =
+                            "https://placehold.co/300x200/cccccc/000000?text=No+Image";
+                        }} // Placeholder on error
+                      />
+                      <div className="menu-info">
+                        <h4 className="menu-name">{item.name}</h4>
+                        <div className="menu-meta">
+                          <span className="menu-rating">
+                            ⭐ {item.rating || "N/A"}
+                          </span>
+                          <span className="menu-price">
+                            Rs.{item.price ? item.price.toFixed(2) : "N/A"}
+                          </span>
+                        </div>
+                        <button className="add-to-cart-btn">Add To Cart</button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="no-results">
+                    🔍 No results found matching your criteria.
+                  </div>
+                )}
+              </div>
+            </div>
+          </section>
+          {/* Why Choose Us Section: First card's description is now dynamic */}
+          <section className="why-choose-us" id="about">
+            <div className="why-header">
+              <p className="why-subtitle">Why choose us</p>
+              <h2 className="why-title">Our Flavorful Promise</h2>
+            </div>
+            <div className="why-features">
+              <div className="why-card highlighted">
+                <FaUtensils className="why-icon" />
+                <h3>Wide selection of restaurants</h3>
+                <p>{homepageContent.about.description}</p>
+              </div>
+              <div className="why-card highlighted">
+                <BiFoodMenu className="why-icon" />
+                <h3>Easy ordering process</h3>
+                <p>
+                  Skip the hassle. Order your favorite momos in seconds via
+                  Swiggy or Zomato.
+                </p>
+              </div>
+              <div className="why-card highlighted">
+                <MdDeliveryDining className="why-icon" />
+                <h3>Fast delivery within 20 min</h3>
+                <p>
+                  Hot momos at your doorstep in just 20 minutes—no waiting, just
+                  eating!
+                </p>
+              </div>
+            </div>
+          </section>
+          <Testimonial /> {/* Your existing Testimonial component */}
+          {/* Newsletter Section (unchanged from your original code, static text) */}
+          <section className="momo-newsletter" id="contact">
+            <div className="newsletter-container">
+              <div className="newsletter-image">
+                <img src="./images/Japan momo.jpg" alt="Plate of momos" />
+              </div>
+              <div className="newsletter-content">
+                <h2>Subscribe To Our Newsletter</h2>
+                <p>
+                  Be the first to know about new momos, special offers & where
+                  we’re rolling next.
+                </p>
+                <form className="newsletter-form">
+                  <input
+                    type="email"
+                    placeholder="Type your email….."
+                    required
+                  />
+                  <button type="submit">SUBSCRIBE</button>
+                </form>
+              </div>
+            </div>
+          </section>
+        </>
+      )}
+      <Footer /> {/* Your existing Footer component */}
     </div>
   );
 }
